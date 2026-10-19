@@ -1,0 +1,6 @@
+{
+  "name": "PlanePrev CRM & Gestão Comercial Saúde",
+  "description": "Sistema completo de gestão comercial, CRM no Google Sheets, matriz de especialidades médicas e qualificação previdenciária/tributária para representantes externos da PlanePrev.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
