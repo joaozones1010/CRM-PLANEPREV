@@ -9,32 +9,15 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 
 export const LoginView: React.FC = () => {
-  const { signIn, updateConfig, isConfigured } = useAuth();
+  const { signIn } = useAuth();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-
-  // Discreet emergency setup only if user triggers logo 4 times or Alt+S
-  const [logoClicks, setLogoClicks] = useState(0);
-  const [showSecretSetup, setShowSecretSetup] = useState(false);
-  const [secretUrl, setSecretUrl] = useState(supabaseUrl || '');
-  const [secretKey, setSecretKey] = useState(supabaseAnonKey || '');
-
-  const handleLogoClick = () => {
-    const next = logoClicks + 1;
-    if (next >= 4) {
-      setShowSecretSetup(true);
-      setLogoClicks(0);
-    } else {
-      setLogoClicks(next);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,71 +42,18 @@ export const LoginView: React.FC = () => {
     }
   };
 
-  const handleSaveSecretSetup = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!secretUrl.trim() || !secretKey.trim()) return;
-    updateConfig(secretUrl.trim(), secretKey.trim());
-    setShowSecretSetup(false);
-  };
-
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center px-4 py-8 sm:px-6 lg:px-8 selection:bg-teal-100 selection:text-teal-900">
       <div className="max-w-sm w-full space-y-6">
         
-        {/* Brand Logo */}
-        <div className="flex justify-center items-center cursor-pointer select-none" onClick={handleLogoClick}>
+        {/* Brand Logo PlanePrev */}
+        <div className="flex justify-center items-center select-none">
           <img 
             src="/assets/aistudio/Gemini_Generated_Image_lo3d7nlo3d7nlo3d-removebg-preview_0086b8be.png" 
             alt="PlanePrev" 
             className="h-16 w-auto object-contain drop-shadow-xs"
           />
         </div>
-
-        {/* Secret Setup Modal for Initial Setup */}
-        {showSecretSetup && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-lg space-y-3 animate-fadeIn text-xs">
-            <div className="flex items-center justify-between border-b pb-2">
-              <span className="font-bold text-slate-800">Conexão Supabase</span>
-              <button 
-                type="button"
-                onClick={() => setShowSecretSetup(false)}
-                className="text-slate-400 hover:text-slate-600 text-xs"
-              >
-                Fechar
-              </button>
-            </div>
-            <form onSubmit={handleSaveSecretSetup} className="space-y-2.5">
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">Project URL</label>
-                <input
-                  type="url"
-                  required
-                  placeholder="https://xyz.supabase.co"
-                  value={secretUrl}
-                  onChange={(e) => setSecretUrl(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">Anon Key</label>
-                <input
-                  type="password"
-                  required
-                  placeholder="eyJhbGciOiJIUzI1Ni..."
-                  value={secretKey}
-                  onChange={(e) => setSecretKey(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900"
-                />
-              </div>
-              <button
-                type="submit"
-                className="w-full py-2 rounded-lg bg-teal-600 text-white font-semibold text-xs hover:bg-teal-700"
-              >
-                Salvar Conexão
-              </button>
-            </form>
-          </div>
-        )}
 
         {/* Minimal Login Card: Entrar > Email > Senha */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-5">
@@ -136,7 +66,7 @@ export const LoginView: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             
-            {/* Error Message */}
+            {/* Mensagem de Erro do Supabase Auth */}
             {errorMessage && (
               <div 
                 role="alert" 
@@ -147,7 +77,7 @@ export const LoginView: React.FC = () => {
               </div>
             )}
 
-            {/* Email Field */}
+            {/* Campo E-mail */}
             <div className="space-y-1">
               <label className="block text-xs font-semibold text-slate-700">
                 E-mail
@@ -166,7 +96,7 @@ export const LoginView: React.FC = () => {
               </div>
             </div>
 
-            {/* Password Field */}
+            {/* Campo Senha */}
             <div className="space-y-1">
               <label className="block text-xs font-semibold text-slate-700">
                 Senha
@@ -194,7 +124,7 @@ export const LoginView: React.FC = () => {
               </div>
             </div>
 
-            {/* Submit Button */}
+            {/* Botão Entrar */}
             <button
               type="submit"
               disabled={loading}

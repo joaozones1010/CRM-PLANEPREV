@@ -1,59 +1,56 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Retrieve from Vite environment variables or localStorage
-function getInitialUrl(): string {
+// Leitura direta das variáveis de ambiente no runtime do Vite
+const envUrl = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_SUPABASE_URL : '';
+const envKey = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_SUPABASE_ANON_KEY : '';
+
+// Suporte adicional a localStorage caso as credenciais tenham sido configuradas no painel
+function getResolvedUrl(): string {
+  if (envUrl && typeof envUrl === 'string' && envUrl.trim().length > 0) {
+    return envUrl.trim();
+  }
   if (typeof window !== 'undefined') {
     const local = localStorage.getItem('planeprev_supabase_url');
-    if (local && local.trim().startsWith('https://')) return local.trim();
+    if (local && local.trim().length > 0) return local.trim();
   }
-  const env = import.meta.env.VITE_SUPABASE_URL;
-  if (env && typeof env === 'string' && env.startsWith('https://') && !env.includes('your-project-id')) {
-    return env.trim();
-  }
-  return '';
+  // URL segura para inicialização sem quebrar o módulo
+  return 'https://default-project.supabase.co';
 }
 
-function getInitialKey(): string {
+function getResolvedKey(): string {
+  if (envKey && typeof envKey === 'string' && envKey.trim().length > 0) {
+    return envKey.trim();
+  }
   if (typeof window !== 'undefined') {
     const local = localStorage.getItem('planeprev_supabase_anon_key');
-    if (local && local.trim().length > 10) return local.trim();
+    if (local && local.trim().length > 0) return local.trim();
   }
-  const env = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  if (env && typeof env === 'string' && env.length > 10 && !env.includes('your-anon-public-key')) {
-    return env.trim();
-  }
-  return '';
+  return 'default-anon-key-placeholder';
 }
 
-export let supabaseUrl: string = getInitialUrl();
-export let supabaseAnonKey: string = getInitialKey();
+export let supabaseUrl: string = getResolvedUrl();
+export let supabaseAnonKey: string = getResolvedKey();
 
 export function isSupabaseConfigured(): boolean {
   return Boolean(
     supabaseUrl &&
+    supabaseUrl !== 'https://default-project.supabase.co' &&
     supabaseAnonKey &&
-    supabaseUrl.startsWith('https://') &&
-    !supabaseUrl.includes('your-project-id') &&
-    supabaseAnonKey.length > 15
+    supabaseAnonKey !== 'default-anon-key-placeholder'
   );
 }
 
-let clientInstance: SupabaseClient | null = null;
+// Inicialização do cliente Supabase usando import.meta.env.VITE_SUPABASE_URL e import.meta.env.VITE_SUPABASE_ANON_KEY
+export let supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+});
 
-export function getSupabase(): SupabaseClient | null {
-  if (!isSupabaseConfigured()) {
-    return null;
-  }
-  if (!clientInstance) {
-    clientInstance = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-      },
-    });
-  }
-  return clientInstance;
+export function getSupabase(): SupabaseClient {
+  return supabase;
 }
 
 export function configureSupabaseCredentials(url: string, key: string): { success: boolean; error?: string } {
@@ -64,8 +61,8 @@ export function configureSupabaseCredentials(url: string, key: string): { succes
     if (!cleanUrl.startsWith('https://')) {
       return { success: false, error: 'A URL do Supabase deve iniciar com https://' };
     }
-    if (cleanKey.length < 20) {
-      return { success: false, error: 'A chave anônima (anon public key) informada é inválida ou curta demais.' };
+    if (cleanKey.length < 10) {
+      return { success: false, error: 'A chave anônima informada é curta demais ou inválida.' };
     }
 
     if (typeof window !== 'undefined') {
@@ -75,7 +72,7 @@ export function configureSupabaseCredentials(url: string, key: string): { succes
 
     supabaseUrl = cleanUrl;
     supabaseAnonKey = cleanKey;
-    clientInstance = createClient(cleanUrl, cleanKey, {
+    supabase = createClient(cleanUrl, cleanKey, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
@@ -94,7 +91,13 @@ export function clearSupabaseCredentials(): void {
     localStorage.removeItem('planeprev_supabase_url');
     localStorage.removeItem('planeprev_supabase_anon_key');
   }
-  supabaseUrl = '';
-  supabaseAnonKey = '';
-  clientInstance = null;
+  supabaseUrl = getResolvedUrl();
+  supabaseAnonKey = getResolvedKey();
+  supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  });
 }

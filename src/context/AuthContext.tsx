@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
-import { getSupabase, isSupabaseConfigured, supabaseUrl, configureSupabaseCredentials, clearSupabaseCredentials } from '../lib/supabase';
+import { supabase, isSupabaseConfigured, supabaseUrl, configureSupabaseCredentials, clearSupabaseCredentials } from '../lib/supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -28,41 +28,6 @@ const AuthContext = createContext<AuthContextType>({
   resetConfig: () => {},
 });
 
-export function translateAuthError(error: AuthError | Error | any): string {
-  if (!error) return 'Erro desconhecido de autenticação.';
-  const msg = (error.message || '').toLowerCase();
-  
-  if (
-    msg.includes('invalid login credentials') || 
-    msg.includes('invalid_grant') || 
-    msg.includes('invalid credentials')
-  ) {
-    return 'Credenciais inválidas: e-mail não encontrado ou senha incorreta no Supabase Auth.';
-  }
-  if (msg.includes('email not confirmed')) {
-    return 'Este e-mail já foi registrado no Supabase, mas ainda não foi confirmado. Verifique a caixa de entrada para confirmar o link antes de entrar.';
-  }
-  if (msg.includes('user not found')) {
-    return 'Nenhum usuário cadastrado com este e-mail no Supabase Auth.';
-  }
-  if (msg.includes('user already registered') || msg.includes('already exists')) {
-    return 'Este e-mail já está cadastrado no Supabase Auth. Faça login informando sua senha.';
-  }
-  if (msg.includes('password should be at least')) {
-    return 'A senha deve conter no mínimo 6 caracteres.';
-  }
-  if (msg.includes('invalid format') || msg.includes('valid email')) {
-    return 'Formato de e-mail inválido. Digite um e-mail correto (ex: nome@clinica.com.br).';
-  }
-  if (msg.includes('rate limit') || msg.includes('too many requests') || msg.includes('over_email_send_rate_limit')) {
-    return 'Muitas tentativas em sequência no Supabase Auth. Aguarde alguns instantes antes de tentar novamente.';
-  }
-  if (msg.includes('failed to fetch') || msg.includes('networkerror') || msg.includes('fetch')) {
-    return 'Não foi possível conectar ao servidor do Supabase. Verifique a URL do projeto informada e sua conexão de rede.';
-  }
-  return error.message || 'Falha ao autenticar no Supabase Auth.';
-}
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -71,23 +36,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     let mounted = true;
-    let unsubscribe: (() => void) | undefined;
 
     async function checkCurrentSession() {
-      const client = getSupabase();
-      if (!client) {
-        if (mounted) {
-          setUser(null);
-          setSession(null);
-          setLoading(false);
-        }
-        return;
-      }
-
       try {
-        const { data, error } = await client.auth.getSession();
+        const { data, error } = await supabase.auth.getSession();
         if (mounted) {
-          if (!error && data.session) {
+          if (!error && data?.session) {
             setSession(data.session);
             setUser(data.session.user);
           } else {
@@ -95,17 +49,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(null);
           }
         }
-
-        const { data: authListener } = client.auth.onAuthStateChange((_event, currentSession) => {
-          if (mounted) {
-            setSession(currentSession);
-            setUser(currentSession?.user ?? null);
-          }
-        });
-
-        unsubscribe = () => {
-          authListener.subscription.unsubscribe();
-        };
       } catch (err) {
         console.error('Erro ao verificar sessão do Supabase:', err);
         if (mounted) {
@@ -121,27 +64,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     checkCurrentSession();
 
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+      if (mounted) {
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+      }
+    });
+
     return () => {
       mounted = false;
-      if (unsubscribe) unsubscribe();
+      authListener?.subscription?.unsubscribe();
     };
-  }, [configured]);
+  }, []);
 
   const signIn = async (email: string, password: string): Promise<{ error: Error | null }> => {
-    const client = getSupabase();
-    if (!client) {
-      return { 
-        error: new Error('O Supabase Auth não está conectado. Configure a URL e a Chave Anônima do seu projeto Supabase para validar as credenciais.') 
-      };
-    }
-
     if (!email.trim() || !password) {
-      return { error: new Error('Informe o e-mail e a senha cadastrados no Supabase Auth.') };
+      return { error: new Error('Informe o e-mail e a senha.') };
     }
 
     try {
-      // REAL Supabase Authentication call via supabase.auth.signInWithPassword
-      const { data, error } = await client.auth.signInWithPassword({
+      // Chamada real direta ao Supabase Auth via supabase.auth.signInWithPassword sem travas estáticas
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: password,
       });
@@ -149,45 +92,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         setUser(null);
         setSession(null);
-        return { error: new Error(translateAuthError(error)) };
+
+        // Exibe a mensagem de erro retornada pela API do Supabase (ex: 'E-mail ou senha incorretos')
+        let msg = error.message;
+        const lower = (msg || '').toLowerCase();
+        if (
+          lower.includes('invalid login credentials') ||
+          lower.includes('invalid credentials') ||
+          lower.includes('invalid_grant')
+        ) {
+          msg = 'E-mail ou senha incorretos.';
+        } else if (lower.includes('email not confirmed')) {
+          msg = 'E-mail não confirmado. Verifique o link de confirmação enviado à sua caixa de entrada.';
+        } else if (lower.includes('user not found')) {
+          msg = 'Usuário não encontrado no Supabase Auth.';
+        }
+
+        return { error: new Error(msg) };
       }
 
-      if (!data.session || !data.user) {
-        setUser(null);
-        setSession(null);
-        return { error: new Error('Credenciais não validadas no Supabase Auth.') };
+      if (data?.user && data?.session) {
+        setSession(data.session);
+        setUser(data.user);
+        return { error: null };
       }
 
-      setSession(data.session);
-      setUser(data.user);
       return { error: null };
     } catch (err: any) {
       setUser(null);
       setSession(null);
-      return { error: new Error(translateAuthError(err)) };
+      const msg = err?.message?.toLowerCase().includes('invalid login credentials')
+        ? 'E-mail ou senha incorretos.'
+        : (err?.message || 'E-mail ou senha incorretos.');
+      return { error: new Error(msg) };
     }
   };
 
   const signUp = async (email: string, password: string): Promise<{ error: Error | null; message?: string }> => {
-    const client = getSupabase();
-    if (!client) {
-      return { 
-        error: new Error('O Supabase Auth não está conectado. Configure a URL e a Chave Anônima do seu projeto Supabase.') 
-      };
-    }
-
     if (!email.trim() || password.length < 6) {
       return { error: new Error('Informe um e-mail válido e uma senha com no mínimo 6 caracteres.') };
     }
 
     try {
-      const { data, error } = await client.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password: password,
       });
 
       if (error) {
-        return { error: new Error(translateAuthError(error)) };
+        return { error: new Error(error.message) };
       }
 
       if (data.session && data.user) {
@@ -197,22 +150,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         return { 
           error: null, 
-          message: 'Cadastro criado no Supabase Auth! Se a confirmação de e-mail estiver ativa no seu projeto, confirme o e-mail recebido antes de fazer login.' 
+          message: 'Cadastro criado no Supabase Auth! Se a confirmação de e-mail estiver ativa, confirme o e-mail recebido antes de fazer login.' 
         };
       }
     } catch (err: any) {
-      return { error: new Error(translateAuthError(err)) };
+      return { error: new Error(err?.message || 'Falha ao cadastrar usuário.') };
     }
   };
 
   const signOut = async () => {
-    const client = getSupabase();
-    if (client) {
-      try {
-        await client.auth.signOut();
-      } catch (err) {
-        console.error('Erro ao sair do Supabase:', err);
-      }
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Erro ao sair do Supabase:', err);
     }
     setUser(null);
     setSession(null);
