@@ -44,48 +44,8 @@ export function saveStoredProspects(prospects: DoctorProspect[]): void {
   }
 }
 
-export const sampleDemonstrationDoctors: DoctorProspect[] = [
-  {
-    id: "MED-001",
-    nome: "Dr. Carlos Eduardo Menezes",
-    crm: "148.920-SP",
-    especialidade: "Oncologia Clínica",
-    clinica: "Instituto OncoVida Jardins",
-    endereco: "Av. Brigadeiro Luís Antônio, 3200 - Cj 81",
-    cidadeBairro: "Jardins / São Paulo",
-    secretaria: "Fernanda Ribeiro",
-    telefoneSecretaria: "(11) 98450-4100",
-    telefoneMedico: "(11) 99120-3344",
-    melhorHorario: "Quintas, 11h30 às 12h00 (antes do almoço)",
-    statusParceria: "Parceria Fechada",
-    dataUltimaVisita: "2026-10-02",
-    proximaVisita: "2026-10-16",
-    materialEntregue: "Display de Recepção + 50 Cartilhas de Direitos + Pasta de Laudos",
-    termoAssinado: true,
-    potencialVolume: "Muito Alto",
-    observacoes: "Parceria institucional fechada. Secretária Fernanda é extremamente solícita e coloca o material no balcão de triagem."
-  },
-  {
-    id: "MED-002",
-    nome: "Dr. André Villas Bôas",
-    crm: "162.330-SP",
-    especialidade: "Nefrologia",
-    clinica: "Clínica NefroRim Moema",
-    endereco: "Al. dos Maracatins, 1435 - 3º andar",
-    cidadeBairro: "Moema / São Paulo",
-    secretaria: "Juliana Camargo",
-    telefoneSecretaria: "(11) 97340-8890",
-    telefoneMedico: "(11) 98877-2211",
-    melhorHorario: "Terças, 08h30 (antes de iniciar hemodiálise)",
-    statusParceria: "Visita Realizada",
-    dataUltimaVisita: "2026-10-04",
-    proximaVisita: "2026-10-08",
-    materialEntregue: "Apresentação Institucional PlanePrev deixada com a Juliana",
-    termoAssinado: false,
-    potencialVolume: "Muito Alto",
-    observacoes: "Médico aprovou o modelo de laudo padrão. Falta retorno para assinar o termo de cooperação técnica da clínica."
-  }
-];
+export const sampleDemonstrationDoctors: DoctorProspect[] = [];
+
 
 export interface SpecialtyPitch {
   especialidade: string;

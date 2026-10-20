@@ -16,6 +16,16 @@ function DashboardApp() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('roteiro');
   const [isAiOpen, setIsAiOpen] = useState(false);
 
+  // Sync /login URL path
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!loading && !user && window.location.pathname !== '/login') {
+      window.history.replaceState(null, '', '/login');
+    } else if (!loading && user && window.location.pathname === '/login') {
+      window.history.replaceState(null, '', '/');
+    }
+  }, [user, loading]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -48,7 +58,7 @@ function DashboardApp() {
         )}
 
         {activeTab === 'roteiro' && (
-          <DailyRouteView />
+          <DailyRouteView onGoToPipeline={() => setActiveTab('pipeline_medicos')} />
         )}
 
         {activeTab === 'pipeline_medicos' && (

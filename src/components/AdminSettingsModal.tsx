@@ -131,6 +131,16 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({ isOpen, 
           >
             Cadastrar Novo Usuário
           </button>
+          <button
+            onClick={() => setActiveTab('sql' as any)}
+            className={`pb-2.5 px-3 text-xs font-semibold border-b-2 transition cursor-pointer ${
+              (activeTab as any) === 'sql'
+                ? 'border-teal-600 text-teal-700'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            Tabela no Supabase (SQL)
+          </button>
         </div>
 
         {/* Content */}
@@ -294,6 +304,52 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({ isOpen, 
                   )}
                 </button>
               </form>
+            </div>
+          )}
+
+          {(activeTab as any) === 'sql' && (
+            <div className="space-y-3 text-xs">
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Execute o script abaixo no <strong>SQL Editor</strong> do seu painel Supabase para criar a tabela oficial <code>medicos_clinicas</code> com permissões públicas de leitura e escrita:
+              </p>
+
+              <div className="bg-slate-900 text-slate-200 p-3.5 rounded-xl font-mono text-[11px] overflow-x-auto space-y-1 select-all">
+                <pre>{`-- Criação da tabela de Médicos e Clínicas PlanePrev
+CREATE TABLE IF NOT EXISTS public.medicos_clinicas (
+  id TEXT PRIMARY KEY,
+  nome TEXT NOT NULL,
+  crm TEXT,
+  especialidade TEXT,
+  clinica TEXT NOT NULL,
+  endereco TEXT,
+  cidade_bairro TEXT,
+  secretaria TEXT,
+  telefone_secretaria TEXT,
+  telefone_medico TEXT,
+  melhor_horario TEXT,
+  status_parceria TEXT,
+  data_ultima_visita TEXT,
+  proxima_visita TEXT,
+  material_entregue TEXT,
+  termo_assinado BOOLEAN DEFAULT FALSE,
+  potencial_volume TEXT,
+  observacoes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- Ativação de RLS e políticas de acesso
+ALTER TABLE public.medicos_clinicas ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Acesso completo aos médicos autenticados"
+  ON public.medicos_clinicas
+  FOR ALL
+  USING (true)
+  WITH CHECK (true);`}</pre>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+                <span>Cole este script no <strong>Supabase Dashboard &gt; SQL Editor &gt; Run</strong>.</span>
+              </div>
             </div>
           )}
 

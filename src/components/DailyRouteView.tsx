@@ -10,34 +10,54 @@ import {
   CheckCircle2, 
   AlertCircle 
 } from 'lucide-react';
-import { 
-  DoctorProspect, 
-  getStoredProspects, 
-  saveStoredProspects,
-  sampleDemonstrationDoctors
-} from '../data/b2bProspectingData';
+import { DoctorProspect, getStoredProspects, saveStoredProspects } from '../data/b2bProspectingData';
+import { getDoctorsList, updateDoctorRecord } from '../lib/doctorService';
 
-export const DailyRouteView: React.FC = () => {
+interface DailyRouteViewProps {
+  onGoToPipeline?: () => void;
+}
+
+export const DailyRouteView: React.FC<DailyRouteViewProps> = ({ onGoToPipeline }) => {
   const [prospects, setProspects] = useState<DoctorProspect[]>(() => getStoredProspects());
 
-  // Listen to window storage events if modified in other tab/component
+  // Carrega médicos do Supabase ou cache local no mount
   useEffect(() => {
+    let mounted = true;
+    async function loadData() {
+      const data = await getDoctorsList();
+      if (mounted) {
+        setProspects(data);
+      }
+    }
+    loadData();
+
     const handleStorage = () => {
       setProspects(getStoredProspects());
     };
     window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    return () => {
+      mounted = false;
+      window.removeEventListener('storage', handleStorage);
+    };
   }, []);
 
-  const handleStatusChange = (id: string, newStatus: DoctorProspect['statusParceria']) => {
-    const updated = prospects.map(p => p.id === id ? { ...p, statusParceria: newStatus, dataUltimaVisita: new Date().toISOString().split('T')[0] } : p);
+  const handleStatusChange = async (id: string, newStatus: DoctorProspect['statusParceria']) => {
+    const today = new Date().toISOString().split('T')[0];
+    const target = prospects.find(p => p.id === id);
+    if (!target) return;
+
+    const updatedDoc: DoctorProspect = {
+      ...target,
+      statusParceria: newStatus,
+      dataUltimaVisita: today,
+    };
+
+    const updated = prospects.map(p => p.id === id ? updatedDoc : p);
     setProspects(updated);
     saveStoredProspects(updated);
-  };
 
-  const handleLoadSamples = () => {
-    setProspects(sampleDemonstrationDoctors);
-    saveStoredProspects(sampleDemonstrationDoctors);
+    // Sincroniza no Supabase
+    await updateDoctorRecord(updatedDoc);
   };
 
   const openSecretaryWhatsApp = (p: DoctorProspect) => {
@@ -102,6 +122,15 @@ export const DailyRouteView: React.FC = () => {
           <span className="text-xs font-mono font-medium px-2.5 py-1 rounded-md bg-teal-50 text-teal-800 border border-teal-200">
             {prospects.length} clínicas na carteira
           </span>
+          {onGoToPipeline && (
+            <button
+              onClick={onGoToPipeline}
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-600 hover:bg-teal-700 text-white transition cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Gerenciar Carteira</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -198,7 +227,7 @@ export const DailyRouteView: React.FC = () => {
           ))}
         </div>
       ) : (
-        /* Empty State */
+        /* Empty State Clean */
         <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center space-y-4">
           <div className="w-12 h-12 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center mx-auto border border-teal-200">
             <Calendar className="w-6 h-6" />
@@ -207,18 +236,21 @@ export const DailyRouteView: React.FC = () => {
           <div className="space-y-1 max-w-md mx-auto">
             <h3 className="text-base font-bold text-slate-900">Seu Roteiro de Visitas está limpo e pronto</h3>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Você ainda não tem médicos cadastrados. Cadastre as clínicas que pretende visitar na aba "Carteira de Médicos &amp; Clínicas" para que elas apareçam aqui no seu roteiro diário.
+              Você ainda não tem médicos cadastrados. Cadastre as clínicas que pretende prospectar na aba "Carteira de Médicos &amp; Clínicas" para que elas apareçam aqui no seu roteiro diário de visitas.
             </p>
           </div>
 
-          <div className="pt-2 flex flex-wrap justify-center gap-2">
-            <button
-              onClick={handleLoadSamples}
-              className="px-4 py-2 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 cursor-pointer"
-            >
-              Carregar 2 Clínicas de Exemplo
-            </button>
-          </div>
+          {onGoToPipeline && (
+            <div className="pt-2 flex justify-center">
+              <button
+                onClick={onGoToPipeline}
+                className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-semibold bg-teal-600 hover:bg-teal-700 text-white shadow-xs transition cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Cadastrar Médico / Clínica Agora</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
