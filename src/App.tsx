@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { LoginView } from './components/LoginView';
 import { Navbar, ActiveTab } from './components/Navbar';
 import { PresentationView } from './components/PresentationView';
 import { DailyRouteView } from './components/DailyRouteView';
@@ -7,11 +9,28 @@ import { SpecialtyPitchesView } from './components/SpecialtyPitchesView';
 import { B2BFollowUpView } from './components/B2BFollowUpView';
 import { B2BPromptSheetsView } from './components/B2BPromptSheetsView';
 import { AiCoPilotDrawer } from './components/AiCoPilotDrawer';
-import { ShieldCheck, Stethoscope, Building2 } from 'lucide-react';
+import { ShieldCheck, Building2, Loader2 } from 'lucide-react';
 
-export default function App() {
+function DashboardApp() {
+  const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState<ActiveTab>('roteiro');
   const [isAiOpen, setIsAiOpen] = useState(false);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-3 text-slate-500">
+          <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
+          <span className="text-xs font-medium">Verificando autenticação...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Se o usuário não estiver autenticado, não pode ver a dashboard e é redirecionado para o login
+  if (!user) {
+    return <LoginView />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-teal-100 selection:text-teal-900">
@@ -76,5 +95,13 @@ export default function App() {
         onClose={() => setIsAiOpen(false)}
       />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <DashboardApp />
+    </AuthProvider>
   );
 }

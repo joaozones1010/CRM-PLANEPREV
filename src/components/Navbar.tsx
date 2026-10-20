@@ -6,8 +6,10 @@ import {
   MessageSquare, 
   FileSpreadsheet, 
   Presentation,
-  Bot
+  Bot,
+  LogOut
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export type ActiveTab = 'roteiro' | 'pipeline_medicos' | 'scripts_especialidades' | 'followup_b2b' | 'prompt_sheets' | 'apresentacao';
 
@@ -18,6 +20,8 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenAi }) => {
+  const { user, signOut } = useAuth();
+
   const tabs = [
     { id: 'roteiro' as ActiveTab, label: 'Roteiro de Visitas', icon: Calendar, badge: 'Hoje' },
     { id: 'pipeline_medicos' as ActiveTab, label: 'Carteira de Médicos & Clínicas', icon: Building2 },
@@ -40,7 +44,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenA
             />
           </div>
 
-          {/* Right Actions: AI Assistant */}
+          {/* Right Actions: AI Assistant & Sign Out */}
           <div className="flex items-center space-x-2">
             <button
               onClick={onOpenAi}
@@ -49,6 +53,17 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenA
               <Bot className="w-4 h-4 text-teal-600" />
               <span className="hidden sm:inline">Gerador IA de Pitches</span>
             </button>
+
+            {user && (
+              <button
+                onClick={signOut}
+                className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-red-700 hover:bg-red-50 border border-slate-200 hover:border-red-200 transition cursor-pointer"
+                title={`Desconectar (${user.email})`}
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Sair</span>
+              </button>
+            )}
           </div>
         </div>
 
