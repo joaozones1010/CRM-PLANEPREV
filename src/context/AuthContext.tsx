@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session, AuthError } from '@supabase/supabase-js';
+import { User, Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured, supabaseUrl, configureSupabaseCredentials, clearSupabaseCredentials } from '../lib/supabase';
 
 interface AuthContextType {
@@ -29,19 +29,21 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  // Estado inicial de autenticação: carregando (loading = true)
+  const [loading, setLoading] = useState<boolean>(true);
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [configured, setConfigured] = useState(isSupabaseConfigured());
+  const [user, setUser] = useState<User | null>(null);
+  const [configured, setConfigured] = useState<boolean>(isSupabaseConfigured());
 
   useEffect(() => {
     let mounted = true;
 
+    // 1. Ao carregar a página, executa supabase.auth.getSession()
     async function checkCurrentSession() {
       try {
         const { data, error } = await supabase.auth.getSession();
         if (mounted) {
-          if (!error && data?.session) {
+          if (!error && data?.session?.user) {
             setSession(data.session);
             setUser(data.session.user);
           } else {
@@ -64,26 +66,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     checkCurrentSession();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+    // 3. Ouvinte onAuthStateChange para sincronizar estado global
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, currentSession) => {
       if (mounted) {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
+        setLoading(false);
       }
     });
 
     return () => {
       mounted = false;
-      authListener?.subscription?.unsubscribe();
+      subscription?.unsubscribe();
     };
   }, []);
 
+  // 2. Chamada real ao Supabase Auth via signInWithPassword
   const signIn = async (email: string, password: string): Promise<{ error: Error | null }> => {
     if (!email.trim() || !password) {
       return { error: new Error('Informe o e-mail e a senha.') };
     }
 
     try {
-      // Chamada real direta ao Supabase Auth via supabase.auth.signInWithPassword sem travas estáticas
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: password,
@@ -93,19 +97,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
         setSession(null);
 
-        // Exibe a mensagem de erro retornada pela API do Supabase (ex: 'E-mail ou senha incorretos')
+        // Mensagens de erro claras para o usuário
         let msg = error.message;
         const lower = (msg || '').toLowerCase();
         if (
           lower.includes('invalid login credentials') ||
           lower.includes('invalid credentials') ||
-          lower.includes('invalid_grant')
+          lower.includes('invalid_grant') ||
+          lower.includes('invalid password') ||
+          lower.includes('user not found')
         ) {
-          msg = 'E-mail ou senha incorretos.';
+          msg = 'E-mail ou senha inválidos.';
         } else if (lower.includes('email not confirmed')) {
           msg = 'E-mail não confirmado. Verifique o link de confirmação enviado à sua caixa de entrada.';
-        } else if (lower.includes('user not found')) {
-          msg = 'Usuário não encontrado no Supabase Auth.';
         }
 
         return { error: new Error(msg) };
@@ -122,8 +126,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       setSession(null);
       const msg = err?.message?.toLowerCase().includes('invalid login credentials')
-        ? 'E-mail ou senha incorretos.'
-        : (err?.message || 'E-mail ou senha incorretos.');
+        ? 'E-mail ou senha inválidos.'
+        : (err?.message || 'E-mail ou senha inválidos.');
       return { error: new Error(msg) };
     }
   };

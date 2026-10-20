@@ -12,6 +12,7 @@ import {
   User as UserIcon
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 import { AdminSettingsModal } from './AdminSettingsModal';
 
 export type ActiveTab = 'roteiro' | 'pipeline_medicos' | 'scripts_especialidades' | 'followup_b2b' | 'prompt_sheets' | 'apresentacao';
@@ -36,11 +37,21 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenA
   ];
 
   const handleLogout = async () => {
-    await signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Erro ao sair do Supabase:', err);
+    }
+    try {
+      await signOut();
+    } catch (err) {
+      console.error('Erro no signOut do contexto:', err);
+    }
     if (typeof window !== 'undefined') {
       window.history.replaceState(null, '', '/login');
     }
   };
+
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-xs">

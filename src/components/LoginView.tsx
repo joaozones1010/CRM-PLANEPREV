@@ -8,11 +8,9 @@ import {
   Loader2, 
   AlertCircle
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 
 export const LoginView: React.FC = () => {
-  const { signIn } = useAuth();
-  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -31,12 +29,38 @@ export const LoginView: React.FC = () => {
     setLoading(true);
 
     try {
-      const { error } = await signIn(email, password);
+      // Executa chamada direta supabase.auth.signInWithPassword({ email, password })
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: password,
+      });
+
       if (error) {
-        setErrorMessage(error.message || 'E-mail ou senha incorretos.');
+        let msg = error.message;
+        const lower = (msg || '').toLowerCase();
+        if (
+          lower.includes('invalid login credentials') ||
+          lower.includes('invalid credentials') ||
+          lower.includes('invalid_grant') ||
+          lower.includes('invalid password') ||
+          lower.includes('user not found')
+        ) {
+          msg = 'E-mail ou senha inválidos.';
+        } else if (lower.includes('email not confirmed')) {
+          msg = 'E-mail não confirmado. Verifique o link de confirmação em sua caixa de entrada.';
+        }
+        setErrorMessage(msg);
+        return;
+      }
+
+      if (data?.session && typeof window !== 'undefined' && window.location.pathname === '/login') {
+        window.history.replaceState(null, '', '/');
       }
     } catch (err: any) {
-      setErrorMessage(err?.message || 'E-mail ou senha incorretos.');
+      const msg = err?.message?.toLowerCase().includes('invalid')
+        ? 'E-mail ou senha inválidos.'
+        : (err?.message || 'E-mail ou senha inválidos.');
+      setErrorMessage(msg);
     } finally {
       setLoading(false);
     }
@@ -66,14 +90,14 @@ export const LoginView: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             
-            {/* Mensagem de Erro do Supabase Auth */}
+            {/* Mensagem de Erro Clara do Supabase Auth */}
             {errorMessage && (
               <div 
                 role="alert" 
                 className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 flex items-start space-x-2 animate-fadeIn"
               >
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-600" />
-                <span className="leading-tight">{errorMessage}</span>
+                <span className="leading-tight font-medium">{errorMessage}</span>
               </div>
             )}
 
