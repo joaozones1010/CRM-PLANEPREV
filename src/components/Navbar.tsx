@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Calendar, 
   Building2, 
@@ -7,9 +7,11 @@ import {
   FileSpreadsheet, 
   Presentation,
   Bot,
-  LogOut
+  LogOut,
+  Settings
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { AdminSettingsModal } from './AdminSettingsModal';
 
 export type ActiveTab = 'roteiro' | 'pipeline_medicos' | 'scripts_especialidades' | 'followup_b2b' | 'prompt_sheets' | 'apresentacao';
 
@@ -21,6 +23,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenAi }) => {
   const { user, signOut } = useAuth();
+  const [isAdminSettingsOpen, setIsAdminSettingsOpen] = useState(false);
 
   const tabs = [
     { id: 'roteiro' as ActiveTab, label: 'Roteiro de Visitas', icon: Calendar, badge: 'Hoje' },
@@ -44,7 +47,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenA
             />
           </div>
 
-          {/* Right Actions: AI Assistant & Sign Out */}
+          {/* Right Actions: AI Assistant, Admin Settings & Sign Out */}
           <div className="flex items-center space-x-2">
             <button
               onClick={onOpenAi}
@@ -55,17 +58,39 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onOpenA
             </button>
 
             {user && (
-              <button
-                onClick={signOut}
-                className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-500 hover:text-red-700 hover:bg-red-50 border border-slate-200 hover:border-red-200 transition cursor-pointer"
-                title={`Desconectar (${user.email})`}
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span className="hidden md:inline">Sair</span>
-              </button>
+              <div className="flex items-center space-x-2 pl-1">
+                <span className="hidden md:inline-block text-xs text-slate-500 font-medium max-w-[180px] truncate" title={user.email}>
+                  {user.email}
+                </span>
+
+                {/* Admin-only system & Supabase settings */}
+                <button
+                  onClick={() => setIsAdminSettingsOpen(true)}
+                  className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition cursor-pointer"
+                  title="Configurações de infraestrutura e Supabase (Apenas Admin)"
+                >
+                  <Settings className="w-3.5 h-3.5 text-slate-500" />
+                  <span className="hidden sm:inline">Configurações</span>
+                </button>
+
+                <button
+                  onClick={signOut}
+                  className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-700 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition cursor-pointer"
+                  title={`Desconectar (${user.email})`}
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Sair</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
+
+        {/* Admin Settings Modal */}
+        <AdminSettingsModal
+          isOpen={isAdminSettingsOpen}
+          onClose={() => setIsAdminSettingsOpen(false)}
+        />
 
         {/* Tab Navigation */}
         <div className="flex space-x-1 overflow-x-auto py-2 border-t border-slate-100 scrollbar-none items-center justify-between">
